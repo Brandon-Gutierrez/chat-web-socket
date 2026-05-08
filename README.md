@@ -20,7 +20,7 @@ Sigue estos pasos en tu terminal (Bash/WSL) para levantar el proyecto:
 1. Clonar el Repositorio
 
 ```bash
-git clone [https://github.com/brandon-gutierrez/chat-web-socket.git](https://github.com/brandon-gutierrez/chat-web-socket.git)
+git clone [https://github.com/brandon-gutierrez/chat-web-socket.git](https://github.com/Brandon-Gutierrez/chat-web-socket.git)
 cd chat-web-socket
 
 2. Crear el Archivo de Entorno
