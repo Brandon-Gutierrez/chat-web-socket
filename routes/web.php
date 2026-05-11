@@ -10,7 +10,7 @@ Route::get('/', function () {
 
 // Rutas de autenticacion con Google
 Route::get('/auth/google', [AuthController::class, 'redirect'])->name('auth.google');
-Route::get('/auth/google/callback', [AuthController::class, 'callback']);
+Route::get('/auth/google/callback', [AuthController::class, 'callback'])->name('auth.google.callback');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Rutas del sistema

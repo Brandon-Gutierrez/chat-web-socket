@@ -69,7 +69,7 @@
                 <div class="flex items-center gap-3 border border-[#4F46E5] rounded-xl p-1 pr-2 shadow-sm">
                     <input type="text" id="message-input" class="flex-1 bg-transparent px-4 py-2 focus:outline-none text-sm text-gray-700" placeholder="Escribe un mensaje...">
                     <button id="send-btn" class="bg-[#4F46E5] text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors">
-                        <svg class="w-5 h-5 -rotate-45 translate-y-[-1px] translate-x-[1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 2 11 13"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m22 2-7 20-4-9-9-4 20-7Z"></path></svg>
                     </button>
                 </div>
             </div>
@@ -89,43 +89,49 @@
         const userId = @json(auth()->id());
         const userName = @json(auth()->user()->name);
         const messagesContainer = document.getElementById('messages-container');
+        const input = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const http = window.axios;
         let onlineUsers = [];
-
-        // Scroll al fondo al cargar
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         function copyInviteLink() {
             navigator.clipboard.writeText(chatId);
             alert('ID de sala copiado: ' + chatId + '\nCompártelo para que otros se unan.');
         }
 
-        // WebSockets con Laravel Echo (Reverb)
-        window.Echo.join(`chat.${chatId}`)
-            .here((users) => {
-                onlineUsers = users;
-                updateUsersUI();
-            })
-            .joining((user) => {
-                onlineUsers.push(user);
-                updateUsersUI();
-                renderSystemMessage(`${user.name} se unió al chat`, 'join');
-            })
-            .leaving((user) => {
-                onlineUsers = onlineUsers.filter(u => u.id !== user.id);
-                updateUsersUI();
-                renderSystemMessage(`${user.name} abandonó el chat`, 'leave');
-            })
-            .listen('MessageSent', (e) => {
-                renderMessage(e.message, false);
-            });
+        function initializeChat() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-        // Enviar Mensaje
-        const input = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
+            if (!window.Echo) {
+                console.error('Laravel Echo no está disponible todavía.');
+                document.getElementById('online-count').innerText = 'Sin conexión en tiempo real';
+                document.getElementById('online-count-sidebar').innerText = 'Sin conexión en tiempo real';
+                return;
+            }
+
+            window.Echo.join(`chat.${chatId}`)
+                .here((users) => {
+                    onlineUsers = users;
+                    updateUsersUI();
+                })
+                .joining((user) => {
+                    onlineUsers.push(user);
+                    updateUsersUI();
+                    renderSystemMessage(`${user.name} se unió al chat`, 'join');
+                })
+                .leaving((user) => {
+                    onlineUsers = onlineUsers.filter(u => u.id !== user.id);
+                    updateUsersUI();
+                    renderSystemMessage(`${user.name} abandonó el chat`, 'leave');
+                })
+                .listen('.MessageSent', (e) => {
+                    renderMessage(e.message, false);
+                });
+        }
 
         const sendMessage = async () => {
             const content = input.value;
-            if (!content.trim()) return;
+            if (!content.trim() || !http) return;
 
             input.value = '';
             
@@ -138,11 +144,12 @@
             renderMessage(tempMsg, true);
 
             try {
-                await axios.post(`/chat/${chatId}/message`, { content }, {
+                await http.post(`/chat/${chatId}/message`, { content }, {
                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
                 });
             } catch (error) {
                 console.error("Error enviando el mensaje", error);
+                input.value = content;
             }
         };
 
@@ -150,6 +157,7 @@
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
+        window.addEventListener('load', initializeChat);
 
         // Funciones de UI
         function updateUsersUI() {

@@ -12,14 +12,22 @@ class AuthController extends Controller
 {
     public function redirect()
     {
-        return Socialite::driver('google')->redirect();
+        /** @var GoogleProvider $provider */
+        $provider = Socialite::driver('google');
+
+        return $provider
+            ->redirectUrl(route('auth.google.callback'))
+            ->redirect();
     }
 
     public function callback()
     {
         /** @var GoogleProvider $provider */
         $provider = Socialite::driver('google');
-        $googleUser = $provider->stateless()->user();
+        $googleUser = $provider
+            ->redirectUrl(route('auth.google.callback'))
+            ->stateless()
+            ->user();
 
         $user = User::updateOrCreate([
             'google_id' => $googleUser->id,
