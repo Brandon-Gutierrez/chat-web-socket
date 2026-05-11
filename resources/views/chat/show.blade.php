@@ -9,30 +9,13 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body class="bg-[#EEF2FF] h-screen flex flex-col font-sans">
-    
-    <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm z-10">
-        <div class="flex items-center gap-4">
-            <a href="{{ route('dashboard') }}" class="text-indigo-600 hover:text-indigo-800">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            </a>
-            <div class="flex flex-col">
-                <span class="font-semibold text-gray-800 text-lg">{{ $chat->name }}</span>
-                <span class="text-xs text-gray-500" id="online-count">Conectando...</span>
-            </div>
-        </div>
-        <div class="flex items-center gap-4">
-            <button onclick="copyInviteLink()" class="text-gray-500 hover:text-gray-800" title="Copiar ID del chat">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-            </button>
-            <form action="{{ route('logout') }}" method="POST">
-                @csrf
-                <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Cerrar sesión
-                </button>
-            </form>
-        </div>
-    </header>
+    @include('partials.header', [
+        'title' => $chat->name,
+        'subtitle' => 'Conectando...',
+        'subtitleId' => 'online-count',
+        'backRoute' => 'dashboard',
+        'showCopyButton' => true,
+    ])
 
     <main class="flex-1 overflow-hidden flex relative bg-white">
         <div class="flex-1 flex flex-col relative">
@@ -87,11 +70,13 @@
     <script>
         const chatId = @json((string) $chat->id);
         const userId = @json(auth()->id());
-        const userName = @json(auth()->user()->name);
+        const renderedMessageIds = new Set(@json($chat->messages->pluck('id')->values()));
         const messagesContainer = document.getElementById('messages-container');
         const input = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const http = window.axios;
+        let chatPresence = null;
+        let echoInitAttempts = 0;
         let onlineUsers = [];
 
         function copyInviteLink() {
@@ -103,28 +88,41 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             if (!window.Echo) {
-                console.error('Laravel Echo no está disponible todavía.');
+                echoInitAttempts += 1;
+
+                if (echoInitAttempts < 20) {
+                    window.setTimeout(initializeChat, 250);
+                    return;
+                }
+
+                console.error('Laravel Echo no está disponible.');
                 document.getElementById('online-count').innerText = 'Sin conexión en tiempo real';
                 document.getElementById('online-count-sidebar').innerText = 'Sin conexión en tiempo real';
                 return;
             }
 
-            window.Echo.join(`chat.${chatId}`)
+            if (chatPresence) {
+                return;
+            }
+
+            chatPresence = window.Echo.join(`chat.${chatId}`)
                 .here((users) => {
-                    onlineUsers = users;
+                    onlineUsers = normalizeUsers(users);
                     updateUsersUI();
                 })
                 .joining((user) => {
-                    onlineUsers.push(user);
+                    onlineUsers = normalizeUsers([...onlineUsers, user]);
                     updateUsersUI();
-                    renderSystemMessage(`${user.name} se unió al chat`, 'join');
                 })
                 .leaving((user) => {
                     onlineUsers = onlineUsers.filter(u => u.id !== user.id);
                     updateUsersUI();
-                    renderSystemMessage(`${user.name} abandonó el chat`, 'leave');
                 })
                 .listen('.MessageSent', (e) => {
+                    if (Number(e.message.user_id) === Number(userId)) {
+                        return;
+                    }
+
                     renderMessage(e.message, false);
                 });
         }
@@ -134,19 +132,13 @@
             if (!content.trim() || !http) return;
 
             input.value = '';
-            
-            // Render optimista local
-            const tempMsg = {
-                content: content,
-                user_id: userId,
-                created_at: new Date().toISOString()
-            };
-            renderMessage(tempMsg, true);
 
             try {
-                await http.post(`/chat/${chatId}/message`, { content }, {
+                const response = await http.post(`/chat/${chatId}/message`, { content }, {
                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
                 });
+
+                renderMessage(response.data, true);
             } catch (error) {
                 console.error("Error enviando el mensaje", error);
                 input.value = content;
@@ -168,9 +160,9 @@
             const list = document.getElementById('users-list');
             list.innerHTML = onlineUsers.map(u => `
                 <li class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center font-bold text-sm">
-                        ${u.name.charAt(0).toUpperCase()}
-                        <div class="absolute w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full translate-x-3 translate-y-3"></div>
+                    <div class="relative shrink-0">
+                        ${renderUserAvatar(u)}
+                        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
                     </div>
                     <div class="flex flex-col">
                         <span class="text-sm font-medium text-gray-800">${u.name}</span>
@@ -180,7 +172,33 @@
             `).join('');
         }
 
+        function normalizeUsers(users) {
+            const uniqueUsers = new Map();
+
+            users.forEach((user) => {
+                uniqueUsers.set(user.id, user);
+            });
+
+            return Array.from(uniqueUsers.values());
+        }
+
+        function renderUserAvatar(user) {
+            if (user.avatar) {
+                return `<img src="${user.avatar}" alt="${user.name}" class="w-10 h-10 rounded-full object-cover border border-gray-200">`;
+            }
+
+            return `<div class="w-10 h-10 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center font-bold text-sm">${user.name.charAt(0).toUpperCase()}</div>`;
+        }
+
         function renderMessage(msg, isMine) {
+            if (msg.id && renderedMessageIds.has(msg.id)) {
+                return;
+            }
+
+            if (msg.id) {
+                renderedMessageIds.add(msg.id);
+            }
+
             const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             let html = '';
 

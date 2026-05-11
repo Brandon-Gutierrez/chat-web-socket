@@ -7,9 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#EEF2FF] h-screen flex flex-col font-sans">
-    <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-        <div class="text-indigo-600 font-bold text-xl">TRECE</div>
-    </header>
+    @include('partials.header', ['title' => 'TRECE'])
 
     <main class="flex-1 flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-lg p-10 w-full max-w-md flex flex-col items-center">

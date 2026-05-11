@@ -8,16 +8,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-[#EEF2FF] h-screen flex flex-col font-sans">
-    <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-        <div class="text-indigo-600 font-bold text-xl">TRECE</div>
-        <form action="{{ route('logout') }}" method="POST">
-            @csrf
-            <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                Cerrar sesión
-            </button>
-        </form>
-    </header>
+    @include('partials.header', ['title' => 'TRECE'])
 
     <main class="flex-1 flex items-center justify-center" x-data="{ view: 'menu' }">
         <div class="bg-white rounded-xl shadow-lg p-10 w-full max-w-md">
