@@ -8,22 +8,33 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageSent
+class MessageSent implements ShouldBroadcastNow
 {
     use Dispatchable, SerializesModels;
 
-    public $message;
-    public $chatId;
+    public Message $message;
+    public string $chatId;
 
-    public function __construct(Message $message, $chatId)
+    public function __construct(Message $message, string $chatId)
     {
         $this->message = $message;
         $this->chatId = $chatId;
     }
 
-    public function broadcastOn()
+    public function broadcastOn(): PresenceChannel
     {
-        // Usamos PresenceChannel para saber quién está en línea
         return new PresenceChannel('chat.' . $this->chatId);
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'MessageSent';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'message' => $this->message->load('user')->toArray(),
+        ];
     }
 }

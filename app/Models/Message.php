@@ -6,11 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
 {
-    protected $fillable = ['content', 'chat_id', 'user_id'];
-    public function chat() {
+    protected $fillable = ['content', 'chat_id', 'user_id', 'is_system_message'];
+
+    public function chat()
+    {
         return $this->belongsTo(Chat::class);
     }
-    public function user() {
+
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 }

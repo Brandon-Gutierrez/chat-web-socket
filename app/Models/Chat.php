@@ -8,12 +8,20 @@ use Illuminate\Database\Eloquent\Model;
 class Chat extends Model
 {
     use HasUuids; // Habilita UUIDs automáticamente
+
     protected $fillable = ['name'];
 
-    public function users() {
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    public function users()
+    {
         return $this->belongsToMany(User::class);
     }
-    public function messages() {
+
+    public function messages()
+    {
         return $this->hasMany(Message::class);
     }
 }

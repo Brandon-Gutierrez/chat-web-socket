@@ -2,11 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Model
+class User extends Authenticatable
 {
-    public function chats() {
-    return $this->belongsToMany(Chat::class);
-}
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'google_id',
+        'avatar',
+    ];
+
+    public function chats()
+    {
+        return $this->belongsToMany(Chat::class);
+    }
 }

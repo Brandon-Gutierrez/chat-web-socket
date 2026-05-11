@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 
 class AuthController extends Controller
 {
-    // Redirect to Google for authentication
-    public function redirect() {
+    public function redirect()
+    {
         return Socialite::driver('google')->redirect();
     }
 
-    // Handle the callback from Google
-    public function callback() {
-        $googleUser = Socialite::driver('google')->stateless()->user();
-        
+    public function callback()
+    {
+        /** @var GoogleProvider $provider */
+        $provider = Socialite::driver('google');
+        $googleUser = $provider->stateless()->user();
+
         $user = User::updateOrCreate([
             'google_id' => $googleUser->id,
         ], [
@@ -26,6 +30,16 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+
         return redirect()->route('dashboard');
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
     }
 }
