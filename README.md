@@ -1,99 +1,107 @@
-# Chat Web Socket - Laravel 12 & PostgreSQL 16
+# Chat Web Socket 
 
-Este proyecto es un sistema de chat en tiempo real desarrollado como parte de una investigación en Ingeniería de Sistemas. El stack está completamente contenedorizado para garantizar que todos los desarrolladores trabajen sobre el mismo entorno exacto.
-
----
-
-## Requisitos Previos
-
-Antes de iniciar, asegúrate de tener instalado:
-1. **Docker Desktop** (con soporte para WSL 2 en Windows).
-2. **WSL 2** (Ubuntu recomendado) para un rendimiento óptimo de archivos.
-3. **Git**.
+Sistema de chat en tiempo real con autenticación OAuth de Google y WebSockets nativos de Laravel.
 
 ---
 
-## Guía de Instalación 
+## Inicio Rápido
 
-Sigue estos pasos en tu terminal (Bash/WSL) para levantar el proyecto:
+### Requisitos
+- Docker Desktop (WSL 2 en Windows)
+- Git
+- Terminal Bash/WSL
 
-1. Clonar el Repositorio
+### Instalación (5 minutos)
 
 ```bash
-git clone [https://github.com/brandon-gutierrez/chat-web-socket.git](https://github.com/Brandon-Gutierrez/chat-web-socket.git)
+# 1. Clonar
+git clone https://github.com/Brandon-Gutierrez/chat-web-socket.git
 cd chat-web-socket
 
-2. Crear el Archivo de Entorno
-
-bash
+# 2. Copiar .env
 cp .env.example .env
-## Importante: El archivo .env contiene las credenciales de la base de datos y llaves de seguridad. Nunca se sube al repositorio.
 
-3. Instalación de Dependencias (Sin PHP local)
-##Ejecuta este comando para que un contenedor temporal de Docker instale las librerías de PHP. Esto evita conflictos de versiones en tu máquina host:
+# 3. Instalar PHP (Docker)
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/opt -w /opt \
+    laravelsail/php83-composer:latest composer install --ignore-platform-reqs
 
-```bash
-docker run --rm \
-    -u "$(id -u):$(id -g)" \
-    -v "$(pwd)":/opt \
-    -w /opt \
-    laravelsail/php83-composer:latest \
-    composer install --ignore-platform-reqs
-
-4. Levantar el Entorno con Laravel Sail
-##Sail es un envoltorio (wrapper) de Docker Compose. Levanta todos los microservicios (PHP, Postgres, Redis):
-
-```bash
+# 4. Levantar contenedores
 ./vendor/bin/sail up -d
 
-5. Configuración de la Aplicación
-##Una vez los contenedores estén activos (healthy), ejecuta:
-
-```bash
-# Generar la llave única de la aplicación
+# 5. BD
 ./vendor/bin/sail artisan key:generate
-
-# Correr las migraciones para crear las tablas en PostgreSQL
 ./vendor/bin/sail artisan migrate
 
-6. WebSockets (Tiempo Real)
-##Para que la mensajería funcione instantáneamente, utilizamos Laravel Reverb. Debes mantener una terminal abierta con el servidor de sockets activo:
+# 6. Instalar dependencias frontend
+npm install
 
-```bash
+# 7. Ejecutar (abre 3 terminales)
+# Terminal 1: WebSocket server
 ./vendor/bin/sail artisan reverb:start
 
-7. Arquitectura y Conexiones
-##Mapeo de Puertos
-###Para conectar herramientas externas (Navicat, DBeaver, pgAdmin), utiliza:
+# Terminal 2: Servidor Laravel
+./vendor/bin/sail artisan serve --host=0.0.0.0
 
-Host: 127.0.0.1 o localhost
-Puerto Externo: 5434 (mapeado al 5432 interno)
-Base de Datos: chat-web-socket
+# Terminal 3: frontend
+npm run dev
+```
+
+**O todo junto:**
+```bash
+composer run dev  # Ejecuta todos los servicios simultáneamente
+```
+
+---
+
+## Stack
+
+| Componente | Versión | Puerto |
+|-----------|---------|--------|
+| PHP | 8.3/8.4 | 8000 |
+| PostgreSQL 16 | - | 5434 (ext) |
+| Reverb WebSocket | - | 8080 |
+| Vite Dev Server | - | 5173 |
+
+---
+
+## Base de Datos
+
+**Conexión Externa** (Navicat, DBeaver, pgAdmin):
+```
+Host: 127.0.0.1
+Puerto: 5434
+BD: chat-web-socket
 Usuario: sail
 Contraseña: password
+```
 
-8. Comandos Frecuentes
+---
 
-Acción	Comando
-Entrar al shell del contenedor	./vendor/bin/sail shell
-Crear un modelo	./vendor/bin/sail artisan make:model Nombre
-Ver logs en tiempo real	./vendor/bin/sail logs -f
-Detener contenedores	./vendor/bin/sail down
+## Comandos Frecuentes
 
-9. Solución de Problemas Comunes
-----------------------------------------------------------------------
-Error de Permisos (EACCES):
-##Si no puedes editar archivos desde VS Code, ejecuta en tu terminal:
+```bash
+./vendor/bin/sail shell                    # Entrar al contenedor
+./vendor/bin/sail artisan make:model Nom   # Crear modelo
+./vendor/bin/sail logs -f                  # Ver logs 
+./vendor/bin/sail down                     # Detener contenedores
+./vendor/bin/sail up -d                    # Reiniciar
+```
+
+---
+
+## Solución de Problemas
+
+**Error de permisos (EACCES):**
+```bash
 sudo chown -R $USER:$USER .
-----------------------------------------------------------------------
-Error "pgsql: unknown host":
-##Asegúrate de que los contenedores estén encendidos con ./vendor/bin/sail up -d. Si persiste, reinicia con ./vendor/bin/sail down && ./vendor/bin/sail up -d
-##Conflicto de Puertos:
-##Si el puerto 5434 está ocupado, cámbialo en la variable FORWARD_DB_PORT dentro de tu archivo .env.
+```
 
-10. Stack
+**Contenedores no inician / "pgsql: unknown host":**
+```bash
+./vendor/bin/sail down && ./vendor/bin/sail up -d
+```
 
-Framework: Laravel 12.x
-Runtime: PHP 8.3/8.4 (Dockerizado)
-DB: PostgreSQL 16
-Real-time: Laravel Reverb (WebSockets)
+**Puerto 5434 ocupado:**
+Cambiar `FORWARD_DB_PORT` en `.env`
+
+---
